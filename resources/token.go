@@ -2,10 +2,12 @@ package token
 
 import (
 	"github.com/gin-gonic/gin"
-	"crypto/sha256"
+	/*"crypto/sha256"
 	"bytes"
 	"reflect"
-	"encoding/base64"
+	"encoding/base64"*/
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type Token struct {
@@ -15,42 +17,32 @@ type Error struct {
 	Message		string
 }
 
-type Instance struct {
-	InstanceId 	string
-	UserId		string
-	Ip 			string
-}
-
-type Instances []Instance
-
-var allowedInstance = Instances{
-	Instance{
-		InstanceId: "1",
-		UserId: "a",
-		Ip: "192.168.0.102",
-	},
-	Instance{
-		InstanceId: "2",
-		UserId: "b",
-		Ip: "192.168.0.2",
-	},
-}
 func isInstanceAllowed(InstanceId string, UserId string) bool{
-	for _, allInstances := range allowedInstance {
- 		if allInstances.InstanceId == InstanceId && allInstances.UserId == UserId {
- 			return true
- 		}
- 	}
- 	return false
+	db, err := sql.Open("mysql", "scmanage:scmanage@tcp(localhost:3306)/scmanage")
+	if err != nil {
+        return false
+	}
+	defer db.Close()
+	instanceOut, err := db.Prepare("SELECT instance_id FROM instances WHERE instance_id = ? AND user_id = ?")
+    if err != nil {
+        return false
+    }
+    defer instanceOut.Close()
+    var InstanceIdFromDb string
+    err = instanceOut.QueryRow(InstanceId,UserId).Scan(&InstanceIdFromDb)
+    if err != nil {
+        return false
+    }
+    return true
 }
 
 func CreateToken(c *gin.Context) {
 	InstanceId := c.PostForm("InstanceId")
 	UserId := c.PostForm("UserId")
-	AuthorizationHeader := c.Request.Header.Get("Authorization")
+	//AuthorizationHeader := c.Request.Header.Get("Authorization")
 	if(InstanceId != "" && UserId != "") {
 		if(isInstanceAllowed(InstanceId,UserId)) {
-			h256 := sha256.New()
+			/*h256 := sha256.New()
 			var EncryptedStringNew bytes.Buffer
 			for _, allInstances := range allowedInstance {
 		 		if allInstances.InstanceId == InstanceId {
@@ -68,7 +60,7 @@ func CreateToken(c *gin.Context) {
 		 	} else {
 				var error = Error{Message: "forbidden"}
 				c.JSON(403,error)
-		 	}
+		 	}*/
 		} else {
 			var error = Error{Message: "forbidden"}
 			c.JSON(403,error)
